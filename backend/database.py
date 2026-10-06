@@ -1,61 +1,27 @@
-import psycopg2
+import os
+from pymongo import MongoClient
+from dotenv import load_dotenv
 
+load_dotenv()
 
-def get_connection():
-    connection = psycopg2.connect(
-        host="localhost",
-        database="Codenergy chatbot",
-        user="postgres",
-        password="1234",
-        port="5432"
-    )
+MONGO_URL = os.getenv("MONGO_URL")
 
-    return connection
+client = MongoClient(MONGO_URL)
 
+db = client["chatbot_db"]
 
-def get_company():
-    connection = get_connection()
-    cursor = connection.cursor()
-
-    cursor.execute("SELECT * FROM companies WHERE id = 1;")
-
-    company = cursor.fetchone()
-
-    cursor.close()
-    connection.close()
-
-    return company
+services_collection = db["services"]
+faqs_collection = db["faqs"]
+projects_collection = db["projects"]
 
 
 def get_services():
-    connection = get_connection()
-    cursor = connection.cursor()
-
-    cursor.execute("SELECT * FROM services WHERE company_id = 1;")
-
-    services = cursor.fetchall()
-
-    cursor.close()
-    connection.close()
-
-    return services
+    return list(services_collection.find({}, {"_id": 0}))
 
 
 def get_faqs():
-    connection = get_connection()
-    cursor = connection.cursor()
+    return list(faqs_collection.find({}, {"_id": 0}))
 
-    cursor.execute("SELECT * FROM faqs WHERE company_id = 1;")
 
-    faqs = cursor.fetchall()
-
-    cursor.close()
-    connection.close()
-
-    return faqs
-
-if __name__ == "__main__":
-    faqs = get_faqs()
-
-    for faq in faqs:
-        print(faq)
+def get_projects():
+    return list(projects_collection.find({}, {"_id": 0}))
