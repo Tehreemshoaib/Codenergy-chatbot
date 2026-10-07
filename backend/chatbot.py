@@ -1,20 +1,12 @@
 from openai import OpenAI
 from dotenv import load_dotenv
 import os
-from upstash_redis import Redis
-import json
 
 from backend.database import get_services, get_faqs, get_projects
 
 
 # Load environment variables
 load_dotenv()
-
-
-redis_client = Redis(
-    url=os.getenv("UPSTASH_REDIS_REST_URL"),
-    token=os.getenv("UPSTASH_REDIS_REST_TOKEN")
-)
 
 
 # Connect to DeepSeek
@@ -24,28 +16,7 @@ client = OpenAI(
 )
 
 
-def get_response(message, session_id="user1"):
-
-    # Create a Redis key for this conversation
-    chat_key = f"chat:{session_id}"
-
-
-    # Get previous messages from Redis
-    previous_messages = redis_client.lrange(
-        chat_key,
-        0,
-        -1
-    )
-
-
-    # Convert Redis JSON strings into Python dictionaries
-    conversation_history = []
-
-    for stored_message in previous_messages:
-        conversation_history.append(
-            json.loads(stored_message)
-        )
-
+def get_response(message):
 
     # Get CodeNergy information from MongoDB
     services = get_services()
@@ -95,7 +66,7 @@ A: {faq.get("answer", "")}
 """
 
 
-    # Send previous conversation + new message to DeepSeek
+    # Send message to DeepSeek
     response = client.chat.completions.create(
         model="deepseek-chat",
         messages=[
@@ -120,9 +91,6 @@ CodeNergy information:
 {knowledge}
 """
             },
-
-            *conversation_history,
-
             {
                 "role": "user",
                 "content": message
@@ -133,26 +101,6 @@ CodeNergy information:
 
     # Get DeepSeek response
     bot_response = response.choices[0].message.content
-
-
-    # Save user message
-    redis_client.rpush(
-        chat_key,
-        json.dumps({
-            "role": "user",
-            "content": message
-        })
-    )
-
-
-    # Save bot response
-    redis_client.rpush(
-        chat_key,
-        json.dumps({
-            "role": "assistant",
-            "content": bot_response
-        })
-    )
 
 
     return bot_response
